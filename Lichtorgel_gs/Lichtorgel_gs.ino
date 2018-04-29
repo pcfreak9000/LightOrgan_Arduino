@@ -26,7 +26,7 @@ int tmp = 0;
 
 int program = 0;
 
-//#define seri
+#define seri
 //#define pwm_cap
 
 #ifdef pwm_cap
@@ -84,29 +84,48 @@ void setup() {
   setPwmFrequency(10, 64);
   setPwmFrequency(11, 64);
   #endif
+  digitalWrite(resetPin, HIGH);
   digitalWrite(resetPin, LOW);
-  digitalWrite(strobePin, HIGH);
+}
+
+void test(){
+  analogWrite(ledred, 255);
+    analogWrite(ledyellow, 255);
+    analogWrite(ledgreen,255);
+    analogWrite(ledblue, 255);  
+      delay(1000);
+   analogWrite(ledred, 0);
+    analogWrite(ledyellow, 0);
+    analogWrite(ledgreen, 0);
+    analogWrite(ledblue, 0);  
+  delay(1000);  
 }
 
 void loop() {
+ // test();
+  
   checkButton();
   digitalWrite(resetPin, HIGH);
   digitalWrite(resetPin, LOW);              //change from high to low starts the output of the mutliplexer from the beginning
   tmp = 0;
+  Serial.println("Freqs:");
   for (int i = 0; i < 7; i++) {             //for loop goes through this cycle 7 times to get the values for each frequency band
+    digitalWrite(strobePin, HIGH);
     digitalWrite(strobePin, LOW);           //puts strobe pin low to output the frequency band
-    delayMicroseconds(30);                  //wait until output value of MSGEQ7 can be measured (see timing diagram in the datasheet)
+    delayMicroseconds(40);                  //wait until output value of MSGEQ7 can be measured (see timing diagram in the datasheet)
     spectrumValue[i] = analogRead(analogPin); //put analog DC value in the spectrumValue variable
     tmp += spectrumValue[i];
     if (spectrumValue[i] < singlefilter) {
       spectrumValue[i] = 0;
     }
-
-    //if the received value is below the filter value it will get set to 0
+    #ifdef seri
+    Serial.println(spectrumValue[i]);
+    #endif
+      //if the received value is below the filter value it will get set to 0
     spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255); //transform the 10bit analog input value to a suitable 8bit PWM value
     //    Serial.print(spectrumValue[i]);         //outputs the PWM value on the serial monitor
     //    Serial.print(" ");
-    digitalWrite(strobePin, HIGH);          //puts the strobe pin high to get ready for the next cycle
+    //digitalWrite(strobePin, HIGH);          //puts the strobe pin high to get ready for the next cycle
 
   }
   if (tmp < filter) {
@@ -114,6 +133,8 @@ void loop() {
       spectrumValue[i] = 0;
     }
   }
+ 
+  
   if (program == 0) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
     analogWrite(ledyellow, spectrumValue[2]);
@@ -142,6 +163,7 @@ void checkButton() {
     program += buttonData();
     program %= maxprog;
 #ifdef seri
+    Serial.println("Program:");
     Serial.println(program);
 #endif
     lightProg();
@@ -171,6 +193,7 @@ int buttonData() {
     }
     onTime = millis() - onTime;
 #ifdef seri
+    Serial.println("OnTime:");
     Serial.println(onTime);
 #endif
     if (onTime > button_onTime) {
