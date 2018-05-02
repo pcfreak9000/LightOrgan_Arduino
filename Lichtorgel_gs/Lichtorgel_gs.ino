@@ -26,7 +26,7 @@ int tmp = 0;
 
 int program = 0;
 
-#define seri
+//#define seri
 //#define pwm_cap
 
 #ifdef pwm_cap
