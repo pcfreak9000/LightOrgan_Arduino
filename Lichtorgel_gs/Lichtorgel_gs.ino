@@ -9,7 +9,7 @@
 #define ledyellow 5                        //connects to the Gate of the BUZ11 MOSFET of the RED LED (Bass) and creates a PWM signal with variable duty cycle which depends of the peak value of the low frequencies to control the brightness of the RED LED 
 #define ledgreen 6      //connects to the Gate of the BUZ11 MOSFET of the GREEN LED (Middle) and creates a PWM signal with variable duty cycle which depends of the peak value of the middle frequencies to control the brightness of the GREEN LED
 #define ledblue 9       //connects to the Gate of the BUZ11 MOSFET of the BLUE LED (High) and creates a PWM signal with variable duty cycle which depends of the peak value of the high frequencies to control the brightness of the BLUE LED
-#define filter 85*7        //There will always be some noises which the analogpin will receive. With this filter value we can ignore the very low peaks of the output of the MSGEQ7. Fell free to adjust this value to your liking
+//#define filter 85*7        //There will always be some noises which the analogpin will receive. With this filter value we can ignore the very low peaks of the output of the MSGEQ7. Fell free to adjust this value to your liking
 #define singlefilter 25
 #define read_delay 5
 
@@ -26,46 +26,20 @@ int tmp = 0;
 
 int program = 0;
 
+int filter[7] = {30,30,30,30,30,30,30};
+
+//#define plot
 //#define seri
 //#define pwm_cap
 
-#ifdef pwm_cap
-void setPwmFrequency(int pin, int divisor) {
-  byte mode;
-  if(pin == 5 || pin == 6 || pin == 9 || pin == 10) {
-    switch(divisor) {
-      case 1: mode = 0x01; break;
-      case 8: mode = 0x02; break;
-      case 64: mode = 0x03; break;
-      case 256: mode = 0x04; break;
-      case 1024: mode = 0x05; break;
-      default: return;
-    }
-    if(pin == 5 || pin == 6) {
-      TCCR0B = TCCR0B & 0b11111000 | mode;
-    } else {
-      TCCR1B = TCCR1B & 0b11111000 | mode;
-    }
-  } else if(pin == 3 || pin == 11) {
-    switch(divisor) {
-      case 1: mode = 0x01; break;
-      case 8: mode = 0x02; break;
-      case 32: mode = 0x03; break;
-      case 64: mode = 0x04; break;
-      case 128: mode = 0x05; break;
-      case 256: mode = 0x06; break;
-      case 1024: mode = 0x07; break;
-      default: return;
-    }
-    TCCR2B = TCCR2B & 0b11111000 | mode;
-  }
-}
-#endif
 void setup() {
 #ifdef seri
   Serial.begin(9600);
   Serial.println("Starting...");
   //needed to output the values of the frequencies bands on the serial monitor
+#endif
+#ifdef plot
+  Serial.begin(9600);
 #endif
   pinMode(analogPin, INPUT);  //defines analog pin A0 as an Input
   pinMode(strobePin, OUTPUT); //defines strobe pin 2 as Output
@@ -76,14 +50,6 @@ void setup() {
   pinMode(ledyellow, OUTPUT);
   pinMode(buttonPin, INPUT);
   pinMode(progled, OUTPUT);
-  #ifdef pwm_cap
-  setPwmFrequency(3, 64);
-  setPwmFrequency(5, 256);
-  setPwmFrequency(6, 256);
-  setPwmFrequency(9, 64);
-  setPwmFrequency(10, 64);
-  setPwmFrequency(11, 64);
-  #endif
   digitalWrite(resetPin, HIGH);
   digitalWrite(resetPin, LOW);
 }
@@ -106,40 +72,42 @@ void loop() {
   
   checkButton();
   digitalWrite(resetPin, HIGH);
-  digitalWrite(resetPin, LOW);              //change from high to low starts the output of the mutliplexer from the beginning
-  tmp = 0;
+  digitalWrite(resetPin, LOW);
+  delayMicroseconds(10);             
+  #ifdef seri
   Serial.println("Freqs:");
-  for (int i = 0; i < 7; i++) {             //for loop goes through this cycle 7 times to get the values for each frequency band
+  #endif
+  for (int i = 0; i < 7; i++) {            
     digitalWrite(strobePin, HIGH);
+    delayMicroseconds(5); 
     digitalWrite(strobePin, LOW);           //puts strobe pin low to output the frequency band
     delayMicroseconds(40);                  //wait until output value of MSGEQ7 can be measured (see timing diagram in the datasheet)
-    spectrumValue[i] = analogRead(analogPin); //put analog DC value in the spectrumValue variable
-    tmp += spectrumValue[i];
-    if (spectrumValue[i] < singlefilter) {
+    spectrumValue[i] = analogRead(analogPin); 
+    spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255); 
+    if (spectrumValue[i] < filter[i]) {
       spectrumValue[i] = 0;
     }
+    
     #ifdef seri
     Serial.println(spectrumValue[i]);
     #endif
-      //if the received value is below the filter value it will get set to 0
-    spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255); //transform the 10bit analog input value to a suitable 8bit PWM value
-    //    Serial.print(spectrumValue[i]);         //outputs the PWM value on the serial monitor
-    //    Serial.print(" ");
-    //digitalWrite(strobePin, HIGH);          //puts the strobe pin high to get ready for the next cycle
+
 
   }
-  if (tmp < filter) {
-    for (int i = 0; i < 7; i++) {
-      spectrumValue[i] = 0;
-    }
+  #ifdef plot
+  for(int i=6; i<7; i++){
+    Serial.print(spectrumValue[i]);
+    Serial.print(" ");  
   }
- 
   
+  Serial.println();
+  #endif
+
   if (program == 0) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
-    analogWrite(ledyellow, spectrumValue[2]);
-    analogWrite(ledgreen, spectrumValue[3]);
-    analogWrite(ledblue, spectrumValue[4] * 2 / 3 + spectrumValue[5] * 1 / 3);
+    analogWrite(ledyellow, spectrumValue[2] / 2 + spectrumValue[3] / 2);
+    analogWrite(ledgreen, spectrumValue[4] * 5 / 6 + spectrumValue[3] / 6);
+    analogWrite(ledblue, (spectrumValue[5] * 2 / 3 + spectrumValue[6] / 3));
   } else if (program == 1) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
     analogWrite(ledyellow, spectrumValue[2]);
@@ -147,9 +115,9 @@ void loop() {
     analogWrite(ledblue, spectrumValue[4]);
   } else if (program == 2) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
-    analogWrite(ledyellow, spectrumValue[2] / 2 + spectrumValue[3] / 2);
-    analogWrite(ledgreen, spectrumValue[4] * 5 / 6 + spectrumValue[3] / 6);
-    analogWrite(ledblue, (spectrumValue[5] * 2 / 3 + spectrumValue[6] / 3));
+    analogWrite(ledyellow, spectrumValue[2]);
+    analogWrite(ledgreen, spectrumValue[3]);
+    analogWrite(ledblue, spectrumValue[4] * 2 / 3 + spectrumValue[5] * 1 / 3);
   }
   delay(read_delay);
 }
