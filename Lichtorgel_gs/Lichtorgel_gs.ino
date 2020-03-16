@@ -22,11 +22,10 @@
 #define maxprog 3
 
 int spectrumValue[7]; //Integer variable to store the 10bit values of the frequency bands
-int tmp = 0;
 
 int program = 0;
 
-int filter[7] = {30,30,30,30,30,30,30};
+int filter[7] = {30, 30, 30, 30, 30, 30, 30};
 
 //#define plot
 //#define seri
@@ -54,55 +53,61 @@ void setup() {
   digitalWrite(resetPin, LOW);
 }
 
-void test(){
+void test() {
   analogWrite(ledred, 255);
-    analogWrite(ledyellow, 255);
-    analogWrite(ledgreen,255);
-    analogWrite(ledblue, 255);  
-      delay(1000);
-   analogWrite(ledred, 0);
-    analogWrite(ledyellow, 0);
-    analogWrite(ledgreen, 0);
-    analogWrite(ledblue, 0);  
-  delay(1000);  
+  analogWrite(ledyellow, 255);
+  analogWrite(ledgreen, 255);
+  analogWrite(ledblue, 255);
+  delay(1000);
+  analogWrite(ledred, 0);
+  analogWrite(ledyellow, 0);
+  analogWrite(ledgreen, 0);
+  analogWrite(ledblue, 0);
+  delay(1000);
 }
 
 void loop() {
- // test();
-  
+  // test();
+
   checkButton();
   digitalWrite(resetPin, HIGH);
   digitalWrite(resetPin, LOW);
-  delayMicroseconds(10);             
-  #ifdef seri
+  delayMicroseconds(10);
+#ifdef seri
   Serial.println("Freqs:");
-  #endif
-  for (int i = 0; i < 7; i++) {            
+#endif
+  for (int i = 0; i < 7; i++) {
     digitalWrite(strobePin, HIGH);
-    delayMicroseconds(5); 
+    delayMicroseconds(5);
     digitalWrite(strobePin, LOW);           //puts strobe pin low to output the frequency band
     delayMicroseconds(40);                  //wait until output value of MSGEQ7 can be measured (see timing diagram in the datasheet)
-    spectrumValue[i] = analogRead(analogPin); 
-    spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255); 
+    spectrumValue[i] = analogRead(analogPin);
+    spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255);
     if (spectrumValue[i] < filter[i]) {
       spectrumValue[i] = 0;
     }
-    
-    #ifdef seri
+
+#ifdef seri
     Serial.println(spectrumValue[i]);
-    #endif
+#endif
 
 
   }
-  #ifdef plot
-  for(int i=6; i<7; i++){
+#ifdef plot
+  for (int i = 6; i < 7; i++) {
     Serial.print(spectrumValue[i]);
-    Serial.print(" ");  
+    Serial.print(" ");
   }
-  
   Serial.println();
-  #endif
+#endif
 
+  int all = 0;
+  for (int i = 0; i < 7; i++) {
+    all += spectrumValue[i];
+  }
+  for (int i = 0; i < 7; i++) {
+    spectrumValue[i] = (int)(spectrumValue[i] * 255.0 * 6 / all);
+  }
   if (program == 0) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
     analogWrite(ledyellow, spectrumValue[2] / 2 + spectrumValue[3] / 2);
@@ -139,14 +144,14 @@ void checkButton() {
 }
 
 void lightProg() {
-  delay(300);
+  delay(10);
   for (int i = 0; i <= program; i++) {
     digitalWrite(progled, HIGH);
     delay(200);
     digitalWrite(progled, LOW);
     delay(200);
   }
-  delay(600);
+  delay(100);
 }
 
 int buttonData() {
@@ -176,5 +181,3 @@ int buttonData() {
   }
   return toreturn;
 }
-
-
