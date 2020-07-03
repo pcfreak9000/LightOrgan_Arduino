@@ -101,13 +101,6 @@ void loop() {
   Serial.println();
 #endif
 
-  int all = 0;
-  for (int i = 0; i < 7; i++) {
-    all += spectrumValue[i];
-  }
-  for (int i = 0; i < 7; i++) {
-    spectrumValue[i] = (int)(spectrumValue[i] * 255.0 * 6 / all);
-  }
   if (program == 0) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
     analogWrite(ledyellow, spectrumValue[2] / 2 + spectrumValue[3] / 2);
