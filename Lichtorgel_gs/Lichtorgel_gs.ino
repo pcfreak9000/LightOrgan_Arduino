@@ -27,6 +27,10 @@ int program = 0;
 
 int filter[7] = {30, 30, 30, 30, 30, 30, 30};
 
+const double konstant = 0.01;
+
+double area = (exp(konstant)-1.0)/konstant - 1.0;
+
 //#define plot
 //#define seri
 //#define pwm_cap
@@ -85,14 +89,12 @@ void loop() {
     spectrumValue[i] = map(spectrumValue[i], 0, 1023, 0, 255);
     if (spectrumValue[i] < filter[i]) {
       spectrumValue[i] = 0;
-    }
-
+    }  
 #ifdef seri
     Serial.println(spectrumValue[i]);
 #endif
-
-
   }
+  
 #ifdef plot
   for (int i = 6; i < 7; i++) {
     Serial.print(spectrumValue[i]);
@@ -102,10 +104,10 @@ void loop() {
 #endif
 
   if (program == 0) {
-    analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
-    analogWrite(ledyellow, spectrumValue[2] / 2 + spectrumValue[3] / 2);
-    analogWrite(ledgreen, spectrumValue[4] * 5 / 6 + spectrumValue[3] / 6);
-    analogWrite(ledblue, (spectrumValue[5] * 2 / 3 + spectrumValue[6] / 3));
+    analogWrite(ledred, fixPerc(spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
+    analogWrite(ledyellow, fixPerc(spectrumValue[2] / 2 + spectrumValue[3] / 2));
+    analogWrite(ledgreen, fixPerc(spectrumValue[4] * 5 / 6 + spectrumValue[3] / 6));
+    analogWrite(ledblue, fixPerc(spectrumValue[5] * 2 / 3 + spectrumValue[6] / 3));
   } else if (program == 1) {
     analogWrite(ledred, (spectrumValue[1] * 2 / 5 + spectrumValue[0] * 3 / 5));
     analogWrite(ledyellow, spectrumValue[2]);
@@ -118,6 +120,13 @@ void loop() {
     analogWrite(ledblue, spectrumValue[4] * 2 / 3 + spectrumValue[5] * 1 / 3);
   }
   delay(read_delay);
+}
+
+int fixPerc(int in){
+    double val = (double)in/255.0;
+    val = exp(konstant*val)-1;
+    val = val/area;
+    return (int)(val * 255.0);
 }
 
 void checkButton() {
